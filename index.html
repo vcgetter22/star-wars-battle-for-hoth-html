@@ -3,59 +3,103 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0b1528">
+<meta name="color-scheme" content="dark">
+<meta name="description" content="Battle for Hoth - a mobile-friendly tactical tower defense game. Defend Echo Base from the Imperial assault.">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Battle for Hoth">
+<meta name="format-detection" content="telephone=no">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" type="image/svg+xml" href="/icon.svg">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <title>Battle for Hoth - Tactical Tower Defense</title>
 <style>
-  * { box-sizing: border-box; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
-  body, html {
+  * { box-sizing: border-box; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
+  html, body {
     margin: 0; padding: 0; width: 100%; height: 100%;
     background: #0b1528; color: #e2f1ff;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    overflow: hidden; touch-action: none;
+    overflow: hidden; overscroll-behavior: none; touch-action: manipulation;
+    -webkit-text-size-adjust: 100%; text-size-adjust: 100%;
   }
+  /* position:fixed pins the page so mobile browser toolbars / rubber-banding never move it */
+  body { position: fixed; inset: 0; }
   #app {
-    display: flex; flex-direction: column; width: 100vw; height: 100vh;
-    padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom);
+    display: flex; flex-direction: column; width: 100%; height: 100%;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
   }
   #topbar {
+    flex: 0 0 auto;
     display: flex; justify-content: space-between; align-items: center;
     background: linear-gradient(180deg, #162a45, #0d1a2d);
     border-bottom: 2px solid #2e5c8a; padding: 6px 10px; font-size: 13px; flex-wrap: wrap; gap: 6px;
   }
-  .stat-group { display: flex; gap: 12px; align-items: center; font-weight: 700; }
+  .stat-group { display: flex; gap: 10px; align-items: center; font-weight: 700; flex-wrap: wrap; }
   .cp-badge { color: #ffd166; }
   .shield-badge { color: #4cc9f0; }
   .wave-badge { color: #ff6b6b; }
   select, button {
     background: #1b365d; color: #fff; border: 1px solid #4cc9f0;
     border-radius: 6px; padding: 4px 8px; font-size: 12px; font-weight: 600; cursor: pointer;
+    font-family: inherit; min-height: 34px; touch-action: manipulation;
   }
+  select { max-width: 44vw; text-overflow: ellipsis; }
   button.active { background: #f77f00; border-color: #fcbf49; color: #000; }
-  #canvas-wrap { flex: 1; position: relative; display: flex; justify-content: center; align-items: center; background: #cde4f5; overflow: hidden; }
-  canvas { display: block; width: 100%; height: 100%; }
-  #bottombar {
-    display: flex; justify-content: space-between; align-items: center;
-    background: #0d1a2d; border-top: 2px solid #2e5c8a; padding: 6px 8px; gap: 6px; overflow-x: auto;
+  #rotate-hint {
+    display: none; flex: 0 0 auto; align-items: center; justify-content: space-between; gap: 8px;
+    background: #12304f; color: #bfe3ff; font-size: 12px; padding: 4px 10px; border-bottom: 1px solid #2e5c8a;
   }
+  #rotate-hint button { min-height: 28px; padding: 2px 10px; }
+  #rotate-hint.dismissed { display: none !important; }
+  @media (orientation: portrait) and (max-width: 700px) { #rotate-hint { display: flex; } }
+  #canvas-wrap { flex: 1 1 0; min-height: 0; position: relative; display: flex; justify-content: center; align-items: center; background: #0b1528; overflow: hidden; }
+  canvas { display: block; touch-action: none; background: #cde4f5; }
+  #bottombar {
+    flex: 0 0 auto;
+    display: flex; align-items: center;
+    background: #0d1a2d; border-top: 2px solid #2e5c8a; padding: 6px 8px; gap: 6px;
+    overflow-x: auto; overflow-y: hidden; touch-action: pan-x; -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain; scrollbar-width: none;
+  }
+  #bottombar::-webkit-scrollbar { display: none; }
+  /* auto margins center the row when it fits and keep it scrollable from the left when it overflows */
+  #bottombar > :first-child { margin-left: auto; }
+  #bottombar > :last-child { margin-right: auto; }
   .build-btn {
-    display: flex; flex-direction: column; align-items: center; min-width: 68px;
+    flex: 0 0 auto;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; min-width: 72px; min-height: 46px;
     padding: 5px 6px; background: #152944; border: 1px solid #3a6ea5; border-radius: 6px; color: #d8ecff; font-size: 11px;
+    white-space: nowrap;
   }
   .build-btn.selected { background: #2b580c; border-color: #80ed99; color: #fff; }
   .build-btn span.cost { color: #ffd166; font-size: 10px; margin-top: 2px; }
   #inspector {
-    position: absolute; bottom: 8px; right: 8px; background: rgba(11, 21, 40, 0.92);
+    position: absolute; bottom: 8px; right: 8px; background: rgba(11, 21, 40, 0.94);
     border: 1px solid #4cc9f0; border-radius: 8px; padding: 8px 10px; font-size: 12px;
-    display: none; flex-direction: column; gap: 5px; min-width: 190px;
+    display: none; flex-direction: column; gap: 6px; min-width: 190px; max-width: calc(100% - 16px);
   }
   .inspector-row { display: flex; justify-content: space-between; gap: 6px; }
+  .inspector-row button { min-height: 38px; min-width: 44px; }
   #toast {
     position: absolute; top: 12px; left: 50%; transform: translateX(-50%);
-    background: rgba(13, 26, 45, 0.9); border: 1px solid #ffd166; color: #ffd166;
-    padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 700;
+    background: rgba(13, 26, 45, 0.92); border: 1px solid #ffd166; color: #ffd166;
+    padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 700; text-align: center;
+    width: max-content; max-width: calc(100% - 24px);
     pointer-events: none; opacity: 0; transition: opacity 0.25s;
+  }
+  /* short landscape phones: reclaim vertical space for the battlefield */
+  @media (max-height: 480px) {
+    #topbar { padding: 3px 8px; font-size: 12px; gap: 8px; flex-wrap: nowrap; }
+    .stat-group { gap: 8px; flex-wrap: nowrap; white-space: nowrap; }
+    .stat-group:last-child { flex: 1 1 auto; min-width: 0; justify-content: flex-end; gap: 5px; }
+    .stat-group select { flex: 1 1 0; min-width: 0; max-width: 150px; }
+    select, button { min-height: 30px; padding: 2px 6px; font-size: 11px; }
+    #bottombar { padding: 3px 6px; gap: 5px; }
+    .build-btn { min-height: 38px; min-width: 64px; padding: 2px 5px; font-size: 10px; }
+    .build-btn span.cost { font-size: 9px; margin-top: 1px; }
+    #toast { top: 6px; }
   }
 </style>
 </head>
@@ -70,25 +114,27 @@
     </div>
     <div class="stat-group">
       <select id="map-select" title="Select Map">
-        <option value="0">Map 1: Echo Perimeter (Classic)</option>
-        <option value="1">Map 2: Twin Ridge Choke</option>
-        <option value="2">Map 3: Ice Cavern Labyrinth (New)</option>
-        <option value="3">Map 4: Dual Generator Core (New)</option>
-        <option value="4">Map 5: Outpost Beta Blitz (New)</option>
+        <option value="0">1: Echo Perimeter</option>
+        <option value="1">2: Twin Ridge</option>
+        <option value="2">3: Ice Cavern</option>
+        <option value="3">4: Generator Core</option>
+        <option value="4">5: Outpost Beta</option>
       </select>
       <select id="mode-select" title="Game Mode">
-        <option value="classic">Classic Mode (Wrench Drops)</option>
-        <option value="fortress">Fortress Mode (Fixed 800 CP)</option>
+        <option value="classic">Classic (wrenches)</option>
+        <option value="fortress">Fortress (800 CP)</option>
       </select>
       <select id="global-target" title="Global Target Priority">
-        <option value="first">Target: Closest to Base</option>
-        <option value="strong">Target: Strongest</option>
-        <option value="weak">Target: Weakest</option>
-        <option value="air">Target: Air First</option>
+        <option value="first">Target: Closest</option>
+        <option value="strong">Target: Strong</option>
+        <option value="weak">Target: Weak</option>
+        <option value="air">Target: Air</option>
       </select>
       <button id="wave-btn">Next Wave</button>
     </div>
   </div>
+
+  <div id="rotate-hint"><span>Tip: rotate your phone sideways for a bigger battlefield.</span><button id="hint-close" aria-label="Dismiss tip">OK</button></div>
 
   <div id="canvas-wrap">
     <canvas id="game"></canvas>
@@ -120,6 +166,19 @@
 const COLS = 16, ROWS = 9;
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
+// Logical (CSS pixel) board size; the backing store is scaled by devicePixelRatio in resize().
+let boardW = 640, boardH = 360, dpr = 1;
+
+function roundRectPath(x, y, w, h, r) {
+  if (ctx.roundRect) { ctx.roundRect(x, y, w, h, r); return; }
+  r = Math.min(r, w / 2, h / 2);
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
 
 const UNIT_DEFS = {
   trench:   { name: 'Trench', cost: 15, reqPower: false, range: 0, dmg: 0, rate: 0, color: '#8d99ae', blocks: false },
@@ -158,7 +217,8 @@ function initGrid() {
   state.cp = state.mode === 'fortress' ? 800 : 250;
   state.shield = 100; state.wave = 0; state.score = 0;
   state.enemies = []; state.projectiles = []; state.wrenches = []; state.spawnQueue = [];
-  state.waveActive = false; state.selectedCell = null;
+  state.waveActive = false; state.selectedCell = null; state.resetting = false;
+  document.getElementById('inspector').style.display = 'none';
   computeFlowField();
   updateUI();
 }
@@ -293,8 +353,11 @@ function updateGame() {
       state.enemies.splice(i, 1);
       updateUI();
       if (state.shield <= 0) {
-        showToast('Shield Generator Destroyed! Resetting Sector...');
-        setTimeout(initGrid, 1500);
+        if (!state.resetting) {
+          state.resetting = true;
+          showToast('Shield Generator Destroyed! Resetting Sector...');
+          setTimeout(initGrid, 1500);
+        }
         return;
       }
     }
@@ -366,8 +429,10 @@ function updateGame() {
 }
 
 function draw() {
-  const W = canvas.width, H = canvas.height;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const W = boardW, H = boardH;
   const cw = W / COLS, ch = H / ROWS;
+  const fs = Math.max(8, Math.min(cw, ch) * 0.3);
   ctx.clearRect(0, 0, W, H);
 
   // Hoth Snowfield Grid
@@ -384,7 +449,7 @@ function draw() {
       if (cell.rock) {
         ctx.fillStyle = '#5c6b73';
         ctx.beginPath();
-        ctx.roundRect(c * cw + 3, r * ch + 3, cw - 6, ch - 6, 6);
+        roundRectPath(c * cw + 3, r * ch + 3, cw - 6, ch - 6, 6);
         ctx.fill();
       }
       if (cell.trench) {
@@ -423,9 +488,10 @@ function draw() {
       ctx.arc((c + 0.5) * cw, (r + 0.5) * ch, Math.min(cw, ch) * 0.34, 0, Math.PI * 2);
       ctx.fill();
       ctx.fillStyle = '#fff';
-      ctx.font = 'bold 10px sans-serif';
+      ctx.font = `bold ${fs}px sans-serif`;
       ctx.textAlign = 'center';
-      ctx.fillText(powered ? `L${u.level}` : 'OFF', (c + 0.5) * cw, (r + 0.55) * ch);
+      ctx.textBaseline = 'middle';
+      ctx.fillText(powered ? `L${u.level}` : 'OFF', (c + 0.5) * cw, (r + 0.5) * ch);
     }
   }
 
@@ -472,14 +538,15 @@ function draw() {
     ctx.strokeStyle = '#000';
     ctx.stroke();
     ctx.fillStyle = '#000';
-    ctx.font = 'bold 10px sans-serif';
+    ctx.font = `bold ${fs}px sans-serif`;
     ctx.textAlign = 'center';
-    ctx.fillText('🔧', x, y + 4);
+    ctx.textBaseline = 'middle';
+    ctx.fillText('🔧', x, y);
   });
 }
 
 function collectWrenchesAt(x, y, isSwipe) {
-  const cw = canvas.width / COLS, ch = canvas.height / ROWS;
+  const cw = boardW / COLS, ch = boardH / ROWS;
   let collected = 0;
   for (let i = state.wrenches.length - 1; i >= 0; i--) {
     const w = state.wrenches[i];
@@ -549,28 +616,62 @@ function updateUI() {
 
 function resize() {
   const rect = document.getElementById('canvas-wrap').getBoundingClientRect();
-  canvas.width = rect.width;
-  canvas.height = rect.height;
+  if (rect.width < 10 || rect.height < 10) return;
+  // Keep the 16:9 board with square cells; letterbox instead of stretching.
+  let w = rect.width, h = w * ROWS / COLS;
+  if (h > rect.height) { h = rect.height; w = h * COLS / ROWS; }
+  boardW = Math.floor(w); boardH = Math.floor(h);
+  dpr = Math.min(window.devicePixelRatio || 1, 3);
+  canvas.style.width = boardW + 'px';
+  canvas.style.height = boardH + 'px';
+  canvas.width = Math.round(boardW * dpr);
+  canvas.height = Math.round(boardH * dpr);
 }
 window.addEventListener('resize', resize);
+window.addEventListener('orientationchange', () => setTimeout(resize, 120));
+if (window.visualViewport) window.visualViewport.addEventListener('resize', resize);
+if (window.ResizeObserver) new ResizeObserver(resize).observe(document.getElementById('canvas-wrap'));
 
-let isPointerDown = false;
+// One active pointer. A plain tap builds/selects on release; a drag is a wrench-collecting swipe.
+let ptr = null;
+function localPos(e) {
+  const rect = canvas.getBoundingClientRect();
+  return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+}
 canvas.addEventListener('pointerdown', e => {
-  isPointerDown = true;
-  const rect = canvas.getBoundingClientRect();
-  const x = e.clientX - rect.left, y = e.clientY - rect.top;
-  if (collectWrenchesAt(x, y, false)) return;
-  const c = Math.floor((x / canvas.width) * COLS);
-  const r = Math.floor((y / canvas.height) * ROWS);
-  handleCellTap(r, c);
+  if (ptr) return;
+  e.preventDefault();
+  try { canvas.setPointerCapture(e.pointerId); } catch (_) {}
+  requestWakeLock();
+  const { x, y } = localPos(e);
+  ptr = { id: e.pointerId, x, y, moved: false, collected: false };
+  if (collectWrenchesAt(x, y, false)) ptr.collected = true;
 });
-
 canvas.addEventListener('pointermove', e => {
-  if (!isPointerDown) return;
-  const rect = canvas.getBoundingClientRect();
-  collectWrenchesAt(e.clientX - rect.left, e.clientY - rect.top, true);
+  if (!ptr || e.pointerId !== ptr.id) return;
+  const { x, y } = localPos(e);
+  if (Math.hypot(x - ptr.x, y - ptr.y) > 12) ptr.moved = true;
+  if (collectWrenchesAt(x, y, true)) ptr.collected = true;
 });
-window.addEventListener('pointerup', () => { isPointerDown = false; });
+canvas.addEventListener('pointerup', e => {
+  if (!ptr || e.pointerId !== ptr.id) return;
+  const t = ptr; ptr = null;
+  if (t.moved || t.collected) return;
+  handleCellTap(Math.floor((t.y / boardH) * ROWS), Math.floor((t.x / boardW) * COLS));
+});
+canvas.addEventListener('pointercancel', e => { if (ptr && e.pointerId === ptr.id) ptr = null; });
+canvas.addEventListener('contextmenu', e => e.preventDefault());
+
+// Keep the screen awake while playing (where supported).
+let wakeLock = null;
+async function requestWakeLock() {
+  try {
+    if ('wakeLock' in navigator && !wakeLock) {
+      wakeLock = await navigator.wakeLock.request('screen');
+      wakeLock.addEventListener('release', () => { wakeLock = null; });
+    }
+  } catch (_) { wakeLock = null; }
+}
 
 document.querySelectorAll('.build-btn').forEach(btn => {
   btn.addEventListener('click', () => {
@@ -609,13 +710,32 @@ document.getElementById('close-insp').addEventListener('click', () => {
 });
 
 document.getElementById('wave-btn').addEventListener('click', startWave);
+document.getElementById('hint-close').addEventListener('click', () => document.getElementById('rotate-hint').classList.add('dismissed'));
 document.getElementById('map-select').addEventListener('change', e => { state.mapIdx = +e.target.value; initGrid(); });
 document.getElementById('mode-select').addEventListener('change', e => { state.mode = e.target.value; initGrid(); });
 document.getElementById('global-target').addEventListener('change', e => { state.globalTarget = e.target.value; });
 
 resize();
 initGrid();
-function loop() { updateGame(); draw(); requestAnimationFrame(loop); }
+
+// Fixed 60 Hz simulation so gameplay speed is identical on 60/90/120/144 Hz displays.
+const STEP_MS = 1000 / 60;
+let lastTs = 0, acc = 0;
+function loop(ts) {
+  if (!lastTs) lastTs = ts;
+  acc += Math.min(ts - lastTs, 250);
+  lastTs = ts;
+  let steps = 0;
+  while (acc >= STEP_MS - 0.5 && steps < 6) { updateGame(); acc -= STEP_MS; steps++; }
+  if (acc < 0) acc = 0;
+  if (steps === 6) acc = 0;
+  draw();
+  requestAnimationFrame(loop);
+}
+document.addEventListener('visibilitychange', () => {
+  lastTs = 0; acc = 0;
+  if (document.visibilityState === 'visible') requestWakeLock();
+});
 requestAnimationFrame(loop);
 </script>
 </body>
